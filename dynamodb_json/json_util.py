@@ -29,6 +29,23 @@ def json_serial(o):
     return serial
 
 
+def convert_empty_values(o):
+    if isinstance(o, dict):
+        for key, value in o.items():
+            if isinstance(value, dict) | isinstance(value, list):
+                convert_empty_values(value)
+            elif value == "":
+                o[key] = None
+    elif isinstance(o, list):
+        for value in o:
+            if isinstance(value, dict) | isinstance(value, list):
+                convert_empty_values(value)
+            elif value == "":
+                o.remove(value)
+                o.append(None)
+    return o
+
+
 def dumps(dct, as_dict=False, **kwargs):
     """ Dump the dict to json in DynamoDB Format
         You can use any other simplejson or json options
@@ -37,8 +54,12 @@ def dumps(dct, as_dict=False, **kwargs):
         :returns: DynamoDB json format.
         """
 
-    result_ = TypeSerializer().serialize(json.loads(json.dumps(dct, default=json_serial),
-                                                    use_decimal=True))
+    _dct = convert_empty_values(dct)
+    result_ = TypeSerializer().serialize(
+        json.loads(
+            json.dumps(_dct, default=json_serial),
+            use_decimal=True)
+        )
     if as_dict:
         return next(six.iteritems(result_))[1]
     else:
